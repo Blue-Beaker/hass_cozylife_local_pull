@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from typing import Any, Final, Literal, TypedDict, final
+from .tcp_client import tcp_client
 from .const import (
     DOMAIN,
     SWITCH_TYPE_CODE,
@@ -18,7 +20,10 @@ from .const import (
     BRIGHT,
     HUE,
     SAT,
+    ENERGY,
+    POWER
 )
+from .sensor import PowerSensor,EnergySensor
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,9 +47,12 @@ def setup_platform(
 
 
     switchs = []
+    hass.data[DOMAIN]['sensors']=[]
     for item in hass.data[DOMAIN]['tcp_client']:
         if SWITCH_TYPE_CODE == item.device_type_code:
-            switchs.append(CozyLifeSwitch(item))
+            switch=CozyLifeSwitch(item)
+            switchs.append(switch)
+            hass.data[DOMAIN]['sensors'].extend(switch._sensors)
     
     add_entities(switchs)
 
@@ -52,14 +60,19 @@ def setup_platform(
 class CozyLifeSwitch(SwitchEntity):
     _tcp_client = None
     _attr_is_on = True
+    _sensors:list[SensorEntity] = []
     
-    def __init__(self, tcp_client) -> None:
+    def __init__(self, tcp_client:tcp_client) -> None:
         """Initialize the sensor."""
         _LOGGER.info('__init__')
         self._tcp_client = tcp_client
         self._unique_id = tcp_client.device_id
         self._name = tcp_client.device_model_name + ' ' + tcp_client.device_id[-4:]
         self._refresh_state()
+        if(POWER in self._state.keys()):
+            self._sensors.append(PowerSensor(self))
+        if(ENERGY in self._state.keys()):
+            self._sensors.append(EnergySensor(self))
     
     def _refresh_state(self):
         self._state = self._tcp_client.query()
@@ -103,3 +116,4 @@ class CozyLifeSwitch(SwitchEntity):
         return None
         
         raise NotImplementedError()
+    

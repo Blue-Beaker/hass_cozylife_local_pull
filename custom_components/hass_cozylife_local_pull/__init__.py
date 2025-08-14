@@ -52,4 +52,5 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
     hass.loop.call_soon_threadsafe(hass.async_create_task, async_load_platform(hass, 'light', DOMAIN, {}, config))
     hass.loop.call_soon_threadsafe(hass.async_create_task, async_load_platform(hass, 'switch', DOMAIN, {}, config))
+    hass.loop.call_soon_threadsafe(hass.async_create_task, async_load_platform(hass, 'sensor', DOMAIN, {}, config))
     return True
