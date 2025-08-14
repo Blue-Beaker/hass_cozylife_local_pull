@@ -44,6 +44,8 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """
     ip = get_ip()
     ip_from_config = config[DOMAIN].get('ip') if config[DOMAIN].get('ip') is not None else []    
+    
+    _LOGGER.info(f'discovered: {ip}, from config: {ip_from_config}')
     ip += ip_from_config
     ip_list = []
     [ip_list.append(i) for i in ip if i not in ip_list]
@@ -64,14 +66,15 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     }
     _LOGGER.info(f'ip_list={ip_list}, tcp_clients={hass.data[DOMAIN]['tcp_client']}')
     
+    time.sleep(3)
+    
     for item in hass.data[DOMAIN]['tcp_client']:
-        _LOGGER.info(f'ip_list={item}')
+        _LOGGER.info(f'ip_list={item}, dict={item.__dict__}')
         if SWITCH_TYPE_CODE == item.device_type_code:
             hass.data[DOMAIN]['outlets'].append(OutletDevice(item))
             
     #wait for get device info from tcp conncetion
     #but it is bad
-    time.sleep(3)
     # _LOGGER.info('setup', hass, config)
     # hass.helpers.discovery.load_platform('sensor', DOMAIN, {}, config)
     hass.loop.call_soon_threadsafe(hass.async_create_task, async_load_platform(hass, 'light', DOMAIN, {}, config))

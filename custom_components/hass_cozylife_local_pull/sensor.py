@@ -1,34 +1,23 @@
 
+from datetime import timedelta
 import math
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.sensor.const import SensorDeviceClass
-from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from typing import Any, Final, Literal, TypedDict, final
-from .tcp_client import tcp_client
 from .const import (
-    DOMAIN,
-    SWITCH_TYPE_CODE,
-    LIGHT_TYPE_CODE,
-    LIGHT_DPID,
-    SWITCH,
-    WORK_MODE,
-    TEMP,
-    BRIGHT,
-    HUE,
-    SAT,
-    ENERGY,
-    POWER
+    DOMAIN
 )
 from .outlet import OutletDevice
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.info('sensor')
+
+SCAN_INTERVAL = timedelta(seconds=10)
 
 def setup_platform(
     hass: HomeAssistant,
@@ -55,45 +44,58 @@ def setup_platform(
     
     add_entities(sensors)
     
-class CozyLifeSwitchSensor(SensorEntity):
-    _attr_should_poll=False
+class OutletSensor(SensorEntity):
     _outlet:OutletDevice
     
     def __init__(self,outlet:OutletDevice) -> None:
         self._outlet=outlet
+        self._attr_unique_id=f"{outlet._id}_{self.type_suffix.lower()}"
+        self._attr_name=f"{outlet._name} {self.type_suffix}"
         super().__init__()
         
     @property
     def native_value(self):
         """Return the state of the sensor."""
-        if not self.available:
-            return None
         raw_value=self.raw_value
-        return raw_value if isinstance(raw_value,float) and math.isfinite(raw_value) else None
-
+        _LOGGER.info(f'reading sensor {self.__class__},{self._outlet._state} value={raw_value}')
+        self._outlet._refresh_state()
+        return raw_value if isinstance(raw_value,int) else None
+    
     @property
     def raw_value(self):
         """Return the state of the sensor."""
         return None
-class PowerSensor(CozyLifeSwitchSensor):
+    @property
+    def type_suffix(self):
+        return ""
+    
+    async def async_added_to_hass(self):
+        """Run when this Entity has been added to HA."""
+        # Sensors should also register callbacks to HA when their state changes
+        self._outlet.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """Entity being removed from hass."""
+        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self._outlet.remove_callback(self.async_write_ha_state)
+        
+class PowerSensor(OutletSensor):
     device_class = SensorDeviceClass.POWER
     native_unit_of_measurement = "W"
-    def __init__(self, outlet) -> None:
-        self._unique_id=f"{outlet._id}_power"
-        self._name=f"{outlet._name} Power"
-        super().__init__(outlet)
     @property
     def raw_value(self):
         """Return the state of the sensor."""
         return self._outlet.power
-class EnergySensor(CozyLifeSwitchSensor):
+    @property
+    def type_suffix(self):
+        return "Power"
+class EnergySensor(OutletSensor):
     device_class = SensorDeviceClass.ENERGY
     native_unit_of_measurement = "Wh"
-    def __init__(self, outlet) -> None:
-        self._unique_id=f"{outlet._id}_energy"
-        self._name=f"{outlet._name} Energy"
-        super().__init__(outlet)
     @property
     def raw_value(self):
         """Return the state of the sensor."""
         return self._outlet.energy
+    @property
+    def type_suffix(self):
+        return "Energy"

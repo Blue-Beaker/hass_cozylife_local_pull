@@ -1,27 +1,14 @@
 """Platform for sensor integration."""
 from __future__ import annotations
+from datetime import timedelta
 
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from typing import Any, Final, Literal, TypedDict, final
-from .tcp_client import tcp_client
+from typing import Any
 from .const import (
-    DOMAIN,
-    SWITCH_TYPE_CODE,
-    LIGHT_TYPE_CODE,
-    LIGHT_DPID,
-    SWITCH,
-    WORK_MODE,
-    TEMP,
-    BRIGHT,
-    HUE,
-    SAT,
-    ENERGY,
-    POWER
+    DOMAIN
 )
 from .outlet import OutletDevice
 import logging
@@ -29,6 +16,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.info('switch')
 
+SCAN_INTERVAL = timedelta(seconds=10)
 
 def setup_platform(
     hass: HomeAssistant,
@@ -45,7 +33,6 @@ def setup_platform(
     if discovery_info is None:
         return
 
-
     switchs = []
     for item in hass.data[DOMAIN]['outlets']:
         assert isinstance(item,OutletDevice)
@@ -57,14 +44,13 @@ def setup_platform(
 
 class CozyLifeSwitch(SwitchEntity):
     _outlet:OutletDevice
-    _sensors:list[SensorEntity] = []
     
     def __init__(self, outlet:OutletDevice) -> None:
         """Initialize the sensor."""
         _LOGGER.info('__init__')
         self._outlet = outlet
-        self._unique_id = f"{outlet._id}_switch"
-        self._name = f"{outlet._name} Switch"
+        self._unique_id = f"{outlet._id}"
+        self._name = f"{outlet._name}"
     
     def _refresh_state(self):
         self._state = self._outlet._refresh_state()

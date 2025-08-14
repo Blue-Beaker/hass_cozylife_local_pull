@@ -40,11 +40,10 @@ class OutletDevice:
     def __init__(self, tcp_client:tcp_client):
         self._tcp_client = tcp_client
         self._id=tcp_client.device_id
-        self._callbacks = set()
-        self._loop = asyncio.get_event_loop()
         self.model = ""
         self._state={}
         self._name = f"{tcp_client.device_model_name} {tcp_client.device_id[-4:]}"
+        self._callbacks = set()
         self._refresh_state()
         """Initialize the sensor."""
         _LOGGER.info('__init__')
@@ -73,8 +72,7 @@ class OutletDevice:
         _LOGGER.info('turn_off')
         self._tcp_client.control({'1': 0})
         return None
-
-
+        
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback."""
         self._callbacks.add(callback)
@@ -84,8 +82,8 @@ class OutletDevice:
         self._callbacks.discard(callback)    
         
     @property
-    def power(self) -> float|None:
+    def power(self) -> int|None:
         return self._state.get(POWER,None)
     @property
-    def energy(self) -> float|None:
+    def energy(self) -> int|None:
         return self._state.get(ENERGY,None)
