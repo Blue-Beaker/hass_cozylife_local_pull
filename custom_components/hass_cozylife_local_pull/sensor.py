@@ -24,7 +24,7 @@ from .const import (
     ENERGY,
     POWER
 )
-# from .switch import CozyLifeSwitch
+from .outlet import OutletDevice
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,16 +46,21 @@ def setup_platform(
         return
     
     sensors = []
-    sensors.extend(hass.data[DOMAIN]['sensors'])
-
+    for item in hass.data[DOMAIN]['outlets']:
+        assert isinstance(item,OutletDevice)
+        if(item.has_power_sensor):
+            sensors.append(PowerSensor(item))
+        if(item.has_energy_sensor):
+            sensors.append(EnergySensor(item))
+    
     add_entities(sensors)
     
 class CozyLifeSwitchSensor(SensorEntity):
     _attr_should_poll=False
-    _switch=None
+    _outlet:OutletDevice
     
-    def __init__(self,switch) -> None:
-        self._switch=switch
+    def __init__(self,outlet:OutletDevice) -> None:
+        self._outlet=outlet
         super().__init__()
         
     @property
@@ -73,22 +78,22 @@ class CozyLifeSwitchSensor(SensorEntity):
 class PowerSensor(CozyLifeSwitchSensor):
     device_class = SensorDeviceClass.POWER
     native_unit_of_measurement = "W"
-    def __init__(self, switch) -> None:
-        self._unique_id=f"{switch._unique_id}_power"
-        self._name=f"{switch._name} Power"
-        super().__init__(switch)
+    def __init__(self, outlet) -> None:
+        self._unique_id=f"{outlet._id}_power"
+        self._name=f"{outlet._name} Power"
+        super().__init__(outlet)
     @property
     def raw_value(self):
         """Return the state of the sensor."""
-        return self._switch._state.get(POWER,None)
+        return self._outlet.power
 class EnergySensor(CozyLifeSwitchSensor):
     device_class = SensorDeviceClass.ENERGY
     native_unit_of_measurement = "Wh"
-    def __init__(self, switch) -> None:
-        self._unique_id=f"{switch._unique_id}_energy"
-        self._name=f"{switch._name} Energy"
-        super().__init__(switch)
+    def __init__(self, outlet) -> None:
+        self._unique_id=f"{outlet._id}_energy"
+        self._name=f"{outlet._name} Energy"
+        super().__init__(outlet)
     @property
     def raw_value(self):
         """Return the state of the sensor."""
-        return self._switch._state.get(ENERGY,None)
+        return self._outlet.energy

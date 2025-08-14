@@ -13,10 +13,27 @@ from .const import (
 from .utils import get_pid_list
 from .udp_discover import get_ip
 from .tcp_client import tcp_client
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryNotReady,ConfigEntryAuthFailed
+from homeassistant.core import HomeAssistant
+from .const import (
+    DOMAIN,
+    SWITCH_TYPE_CODE,
+    LIGHT_TYPE_CODE,
+    LIGHT_DPID,
+    SWITCH,
+    WORK_MODE,
+    TEMP,
+    BRIGHT,
+    HUE,
+    SAT,
+    ENERGY,
+    POWER
+)
+from .outlet import OutletDevice
 
 
 _LOGGER = logging.getLogger(__name__)
-
 
 def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
@@ -43,8 +60,15 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
         'temperature': 24,
         'ip': ip_list,
         'tcp_client': [tcp_client(item) for item in ip_list],
+        'outlets': []
     }
-
+    _LOGGER.info(f'ip_list={ip_list}, tcp_clients={hass.data[DOMAIN]['tcp_client']}')
+    
+    for item in hass.data[DOMAIN]['tcp_client']:
+        _LOGGER.info(f'ip_list={item}')
+        if SWITCH_TYPE_CODE == item.device_type_code:
+            hass.data[DOMAIN]['outlets'].append(OutletDevice(item))
+            
     #wait for get device info from tcp conncetion
     #but it is bad
     time.sleep(3)

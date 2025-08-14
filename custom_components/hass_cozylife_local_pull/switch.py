@@ -23,7 +23,7 @@ from .const import (
     ENERGY,
     POWER
 )
-from .sensor import PowerSensor,EnergySensor
+from .outlet import OutletDevice
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,37 +47,29 @@ def setup_platform(
 
 
     switchs = []
-    hass.data[DOMAIN]['sensors']=[]
-    for item in hass.data[DOMAIN]['tcp_client']:
-        if SWITCH_TYPE_CODE == item.device_type_code:
-            switch=CozyLifeSwitch(item)
-            switchs.append(switch)
-            hass.data[DOMAIN]['sensors'].extend(switch._sensors)
+    for item in hass.data[DOMAIN]['outlets']:
+        assert isinstance(item,OutletDevice)
+        switch=CozyLifeSwitch(item)
+        switchs.append(switch)
     
     add_entities(switchs)
 
 
 class CozyLifeSwitch(SwitchEntity):
-    _tcp_client = None
-    _attr_is_on = True
+    _outlet:OutletDevice
     _sensors:list[SensorEntity] = []
     
-    def __init__(self, tcp_client:tcp_client) -> None:
+    def __init__(self, outlet:OutletDevice) -> None:
         """Initialize the sensor."""
         _LOGGER.info('__init__')
-        self._tcp_client = tcp_client
-        self._unique_id = tcp_client.device_id
-        self._name = tcp_client.device_model_name + ' ' + tcp_client.device_id[-4:]
-        self._refresh_state()
-        if(POWER in self._state.keys()):
-            self._sensors.append(PowerSensor(self))
-        if(ENERGY in self._state.keys()):
-            self._sensors.append(EnergySensor(self))
+        self._outlet = outlet
+        self._unique_id = f"{outlet._id}_switch"
+        self._name = f"{outlet._name} Switch"
     
     def _refresh_state(self):
-        self._state = self._tcp_client.query()
+        self._state = self._outlet._refresh_state()
         self._attr_is_on = 0 != self._state['1']
-    
+        
     @property
     def name(self) -> str:
         return self._name
@@ -89,11 +81,7 @@ class CozyLifeSwitch(SwitchEntity):
     
     @property
     def is_on(self) -> bool:
-        """Return True if entity is on."""
-        self._attr_is_on = True
-
-        self._refresh_state()
-        return self._attr_is_on
+        return self._outlet._attr_is_on
     
     @property
     def unique_id(self) -> str | None:
@@ -102,18 +90,71 @@ class CozyLifeSwitch(SwitchEntity):
     
     def turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        self._attr_is_on = True
-        _LOGGER.info(f'turn_on:{kwargs}')
-        self._tcp_client.control({'1': 255})
+        self._outlet.turn_on()
         return None
-        raise NotImplementedError()
     
     def turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
-        self._attr_is_on = False
-        _LOGGER.info('turn_off')
-        self._tcp_client.control({'1': 0})
+        self._outlet.turn_off()
         return None
+    
+# class CozyLifeSwitch(SwitchEntity):
+#     _tcp_client = None
+#     _attr_is_on = True
+#     _sensors:list[SensorEntity] = []
+    
+#     def __init__(self, tcp_client:tcp_client) -> None:
+#         """Initialize the sensor."""
+#         _LOGGER.info('__init__')
+#         self._tcp_client = tcp_client
+#         self._unique_id = tcp_client.device_id
+#         self._name = tcp_client.device_model_name + ' ' + tcp_client.device_id[-4:]
+#         self._refresh_state()
+#         if(POWER in self._state.keys()):
+#             self._sensors.append(PowerSensor(self))
+#         if(ENERGY in self._state.keys()):
+#             self._sensors.append(EnergySensor(self))
+    
+#     def _refresh_state(self):
+#         self._state = self._tcp_client.query()
+#         self._attr_is_on = 0 != self._state['1']
+    
+#     @property
+#     def name(self) -> str:
+#         return self._name
+    
+#     @property
+#     def available(self) -> bool:
+#         """Return if the device is available."""
+#         return True
+    
+#     @property
+#     def is_on(self) -> bool:
+#         """Return True if entity is on."""
+#         self._attr_is_on = True
+
+#         self._refresh_state()
+#         return self._attr_is_on
+    
+#     @property
+#     def unique_id(self) -> str | None:
+#         """Return a unique ID."""
+#         return self._unique_id
+    
+#     def turn_on(self, **kwargs: Any) -> None:
+#         """Turn the entity on."""
+#         self._attr_is_on = True
+#         _LOGGER.info(f'turn_on:{kwargs}')
+#         self._tcp_client.control({'1': 255})
+#         return None
+#         raise NotImplementedError()
+    
+#     def turn_off(self, **kwargs: Any) -> None:
+#         """Turn the entity off."""
+#         self._attr_is_on = False
+#         _LOGGER.info('turn_off')
+#         self._tcp_client.control({'1': 0})
+#         return None
         
-        raise NotImplementedError()
+#         raise NotImplementedError()
     
