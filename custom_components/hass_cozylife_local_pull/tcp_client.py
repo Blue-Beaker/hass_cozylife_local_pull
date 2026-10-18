@@ -2,7 +2,7 @@
 import json
 import socket
 import time
-from typing import Optional, Union, Any
+from typing import Callable, Optional, Union, Any
 import logging
 from .utils import get_pid_list, get_sn
 import threading
@@ -49,6 +49,7 @@ class tcp_client(object):
         self._connect = None  # Initialize _connect as None
         self._close_connection() 
         self._reconnect()
+        self._callbacks = set()
     
     def _close_connection(self):
         if self._connect:
